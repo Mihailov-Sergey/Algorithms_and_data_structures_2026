@@ -23,26 +23,44 @@ export{
 			}
 			shrink_to_fit();
 		}
-		T operator[](size_t index) const;
-		void set(size_t degree, const T& value);
+		size_t degree() const {
+			return _coeffs.size() - 1;
+		}
+		T operator[](size_t index) const {
+			if (index > degree()) {
+				return static_cast<T>(0);
+			}
+			return _coeffs[index];
+		}
+		void expand(size_t other_degree) {
+			if (other_degree > degree()) {
+				_coeffs.resize(other_degree + 1, static_cast<T>(0));
+			}
+		}
+		void set(size_t degree, const T& value) {
+			if (degree > degree()) {
+				if (is_zero(value)) {
+					return;
+				}
+				expand(degree);
+			}
+			_coeffs[degree] = value;
+			shrink_to_fit();
+		}
 		template <typename X>
 		auto evaluate(const X& x) const;
 		Polynomial operator+(const Polynomial& other) const;
 		Polynomial operator-(const Polynomial& other) const;
 		Polynomial operator*(const T& scalar) const;
-		size_t degree() const {
-			return _coeffs.size() - 1;
-		}
 		void shrink_to_fit() {
 			while (_coeffs.size() > 1 && is_zero(_coeffs.back())) {
 				_coeffs.pop_back();
 			}
 			_coeffs.shrink_to_fit();
 		}
-		expand();
 	};
 	template <typename T>
-	Polynomial<T> operator*(const T& scalar, const Polynomial& poli) {
+	Polynomial<T> operator*(const T& scalar, const Polynomial<T>& poli) {
 		return poli * scalar;
 	}
 }
