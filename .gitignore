@@ -1,0 +1,5 @@
+.vs
+Labs.slnx
+Lab1/*
+!Lab1/main.cpp
+!Lab1/Polynomial.ixx
