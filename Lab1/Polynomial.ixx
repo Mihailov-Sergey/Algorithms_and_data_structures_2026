@@ -5,6 +5,15 @@ export{
 	class Polynomial {
 	private:
 		std::vector<T> _coeff;
+		bool is_zero(const T& val) const {
+			if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>
+				|| std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>) {
+				return std::abs(val) < 1e-9;
+			}
+			else {
+				return val == static_cast<T>(0);
+			}
+		}
 	public:
 		Polynomial() : _coeff({ static_cast<T>(0) }) {}
 		Polynomial(size_t max_degree);
@@ -26,4 +35,8 @@ export{
 		shrink_to_fit();
 		expand();
 	};
+	template <typename T>
+	Polynomial<T> operator*(const T& scalar, const Polynomial& poli) {
+		return poli * scalar;
+	}
 }
