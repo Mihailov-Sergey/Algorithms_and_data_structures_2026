@@ -1,4 +1,5 @@
 .vs
+x64
 Labs.slnx
 Lab1/*
 !Lab1/main.cpp
