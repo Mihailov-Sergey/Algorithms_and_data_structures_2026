@@ -3,6 +3,9 @@ import Polynomial;
 
 int main() {
     try {
+        std::println("Вариант 17, Многочлены (5)");
+        std::println("");
+
         std::println("1: Конструкторы и вывод (operator<<)");
         Polynomial<double> p_empty;
         std::cout << "Конструктор по умолчанию: " << p_empty << "\n";
