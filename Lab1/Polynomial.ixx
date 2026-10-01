@@ -48,9 +48,43 @@ export{
 			shrink_to_fit();
 		}
 		template <typename X>
-		auto evaluate(const X& x) const;
-		Polynomial operator+(const Polynomial& other) const;
-		Polynomial operator-(const Polynomial& other) const;
+		auto evaluate(const X& x) const {
+			using ResultType = decltype(T()* X());
+			size_t d = degree();
+			ResultType result = static_cast<ResultType>((*this)[d]);
+			while (d > 0) {
+				--d;
+				result = result * x + static_cast<ResultType>((*this)[d]);
+			}
+			return result;
+		}
+		Polynomial& operator+=(const Polynomial& other) {
+			if (other._coeffs.size() > _coeffs.size()) {
+				_coeffs.resize(other._coeffs.size(), static_cast<T>(0));
+			}
+			for (size_t i = 0; i < other._coeffs.size(); ++i) {
+				_coeffs[i] += other._coeffs[i];
+			}
+			shrink_to_fit();
+			return *this;
+		}
+		Polynomial& operator-=(const Polynomial& other) {
+			if (other._coeffs.size() > _coeffs.size()) {
+				_coeffs.resize(other._coeffs.size(), static_cast<T>(0));
+			}
+			for (size_t i = 0; i < other._coeffs.size(); ++i) {
+				_coeffs[i] -= other._coeffs[i];
+			}
+			shrink_to_fit();
+			return *this;
+		}
+		Polynomial& operator*=(const T& scalar) {
+			for (size_t i = 0; i < _coeffs.size(); ++i) {
+				_coeffs[i] *= scalar;
+			}
+			shrink_to_fit();
+			return *this;
+		}
 		Polynomial operator*(const T& scalar) const;
 		void shrink_to_fit() {
 			while (_coeffs.size() > 1 && is_zero(_coeffs.back())) {
@@ -60,7 +94,21 @@ export{
 		}
 	};
 	template <typename T>
-	Polynomial<T> operator*(const T& scalar, const Polynomial<T>& poli) {
-		return poli * scalar;
+	Polynomial<T> operator+(Polynomial<T> left, const Polynomial<T>& right) {
+		left += right;
+		return left;
+	}
+	template <typename T>
+	Polynomial<T> operator-(Polynomial<T> left, const Polynomial<T>& right) {
+		left -= right;
+		return left;
+	}
+	template <typename T>
+	Polynomial<T> operator*(Polynomial<T> poli, const T& scalar) {
+		return poli *= scalar;
+	}
+	template <typename T>
+	Polynomial<T> operator*(const T& scalar, Polynomial<T> poli) {
+		return poli *= scalar;
 	}
 }
