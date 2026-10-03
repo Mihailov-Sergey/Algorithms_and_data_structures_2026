@@ -4,7 +4,59 @@ import std;
 export template <typename T>
 class Polynomial {
 private:
-	std::vector<T> _coeffs;
+	T* _coeffs;
+	size_t _capacity;
+	size_t _degree;
+	void reallocate(size_t new_capacity) {
+		T* new_coeffs = new T[new_capacity]();
+		size_t n = (new_capacity < _capacity) ? new_capacity : _capacity;
+		for (size_t i = 0; i < n; ++i) {
+			new_coeffs[i] = _coeffs[i];
+		}
+		delete[] _coeffs;
+		_coeffs = new_coeffs;
+		_capacity = new_capacity;
+	}
+public:
+	Polynomial() : _coeffs(new T[1]()), _capacity(1), _degree(0) {}
+	Polynomial(size_t max_degree) : _coeffs(new T[max_degree + 1]()), _capacity(max_degree + 1), _degree(max_degree) {}
+	Polynomial(const T* coefficients, size_t size) {
+		if (size == 0) {
+			_coeffs = new T[1]();
+			_capacity = 1;
+			_degree = 0;
+		}
+		else {
+			_coeffs = new T[size]();
+			for (size_t i = 0; i < size; ++i) {
+				_coeffs[i] = coefficients[i];
+			}
+			_capacity = size;
+			_degree = size - 1;
+			shrink_to_fit();
+		}
+	}
+	Polynomial(const Polynomial& other) : _coeffs(new T[other._capacity]()), _capacity(other._capacity), _degree(other._degree) {
+		for (size_t i = 0; i < _capacity; ++i) {
+			_coeffs[i] = other._coeffs[i];
+		}
+	}
+	Polynomial& operator=(const Polynomial& other) {
+		if (this != &other) {
+			T* new_coeffs = new T[other._capacity]();
+			for (size_t i = 0; i < other._capacity; ++i) {
+				new_coeffs[i] = other._coeffs[i];
+			}
+			delete[] _coeffs;
+			_coeffs = new_coeffs;
+			_capacity = other._capacity;
+			_degree = other._degree;
+		}
+		return *this;
+	}
+	~Polynomial() {
+		delete[] _coeffs;
+	}
 	bool is_zero(const T& val) const {
 		if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>
 			|| std::is_same_v<T, std::complex<float>> || std::is_same_v<T, std::complex<double>>) {
@@ -14,82 +66,87 @@ private:
 			return val == static_cast<T>(0);
 		}
 	}
-public:
-	Polynomial() : _coeffs({ static_cast<T>(0) }) {}
-	Polynomial(size_t max_degree) : _coeffs(max_degree + 1, static_cast<T>(0)) {}
-	Polynomial(const std::vector<T>& coefficients) : _coeffs(coefficients) {
-		if (_coeffs.empty()) {
-			_coeffs.push_back(static_cast<T>(0));
-		}
-		shrink_to_fit();
-	}
 	size_t degree() const {
-		return _coeffs.size() - 1;
+		return _degree;
 	}
 	T operator[](size_t index) const {
-		if (index > degree()) {
-			return static_cast<T>(0);
+		if (index > _degree) {
+			throw std::out_of_range("Индекс за пределами степени многочлена!");
 		}
 		return _coeffs[index];
 	}
 	void expand(size_t other_degree) {
-		if (other_degree > degree()) {
-			_coeffs.resize(other_degree + 1, static_cast<T>(0));
+		if (other_degree >= _capacity) {
+			reallocate(other_degree + 1);
 		}
+		_degree = other_degree;
 	}
-	void set(size_t other_degree, const T& value) {
-		if (other_degree > degree()) {
-			if (is_zero(value)) {
-				return;
-			}
-			expand(other_degree);
+	void set(size_t index, const T& value) {
+		if (index > _degree) {
+			if (is_zero(value)) return;
+			expand(index);
 		}
-		_coeffs[other_degree] = value;
+		_coeffs[index] = value;
 		shrink_to_fit();
 	}
 	template <typename X>
 	auto evaluate(const X& x) const {
 		using ResultType = decltype(T()* X());
 		size_t d = degree();
-		ResultType result = static_cast<ResultType>((*this)[d]);
+		ResultType result = static_cast<ResultType>(_coeffs[d]);
 		while (d > 0) {
 			--d;
-			result = result * x + static_cast<ResultType>((*this)[d]);
+			result = result * x + static_cast<ResultType>(_coeffs[d]);
 		}
 		return result;
 	}
 	Polynomial& operator+=(const Polynomial& other) {
-		if (other._coeffs.size() > _coeffs.size()) {
-			_coeffs.resize(other._coeffs.size(), static_cast<T>(0));
+		if (other._degree > _degree) {
+			expand(other._degree);
 		}
-		for (size_t i = 0; i < other._coeffs.size(); ++i) {
+		for (size_t i = 0; i < other._degree + 1; ++i) {
 			_coeffs[i] += other._coeffs[i];
 		}
 		shrink_to_fit();
 		return *this;
 	}
 	Polynomial& operator-=(const Polynomial& other) {
-		if (other._coeffs.size() > _coeffs.size()) {
-			_coeffs.resize(other._coeffs.size(), static_cast<T>(0));
+		if (other._degree > _degree) {
+			expand(other._degree);
 		}
-		for (size_t i = 0; i < other._coeffs.size(); ++i) {
+		for (size_t i = 0; i < other._degree + 1; ++i) {
 			_coeffs[i] -= other._coeffs[i];
 		}
 		shrink_to_fit();
 		return *this;
 	}
 	Polynomial& operator*=(const T& scalar) {
-		for (size_t i = 0; i < _coeffs.size(); ++i) {
+		for (size_t i = 0; i < _degree + 1; ++i) {
 			_coeffs[i] *= scalar;
 		}
 		shrink_to_fit();
 		return *this;
 	}
-	void shrink_to_fit() {
-		while (_coeffs.size() > 1 && is_zero(_coeffs.back())) {
-			_coeffs.pop_back();
+	bool operator==(const Polynomial& other) const {
+		if (_degree != other._degree) return false;
+		for (size_t i = 0; i < _degree + 1; ++i) {
+			T diff = _coeffs[i] - other._coeffs[i];
+			if (!is_zero(diff)) {
+				return false;
+			}
 		}
-		_coeffs.shrink_to_fit();
+		return true;
+	}
+	bool operator!=(const Polynomial& other) const {
+		return !(*this == other);
+	}
+	void shrink_to_fit() {
+		while (_degree > 0 && is_zero(_coeffs[_degree])) {
+			--_degree;
+		}
+		if (_capacity > _degree + 1) {
+			reallocate(_degree + 1);
+		}
 	}
 };
 
@@ -133,7 +190,7 @@ std::ostream& operator<<(std::ostream& os, const Polynomial<T>& poly) {
 	for (size_t i = poly.degree() + 1; i > 0; --i) {
 		size_t idx = i - 1;
 		T val = poly[idx];
-		if (val == static_cast<T>(0)) continue;
+		if (poly.is_zero(val)) continue;
 		if (!first) {
 			os << " + ";
 		}
